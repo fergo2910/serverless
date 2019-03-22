@@ -1,4 +1,4 @@
-# serverless.yml
+# serverless.yml not using layers
 
 service: serverless
 
