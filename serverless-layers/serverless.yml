@@ -1,0 +1,64 @@
+# serverless.yml
+
+service: serverless-layers
+
+custom:
+  tableName: 'users-table-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: layer
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["UsersDynamoDBTable", "Arn" ] }
+  environment:
+    USERS_TABLE: ${self:custom.tableName}
+
+package:
+  exclude:
+    - layers/**
+
+layers:
+  Nodemodules:
+    path: layers/
+    name: ${self:provider.stage}-layerName
+    description: Store all modules needed in one layer
+    compatibleRuntimes:
+      - nodejs6.10
+
+functions:
+  app:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
+    layers:
+      - {Ref: NodemodulesLambdaLayer}
+
+resources:
+  Resources:
+    UsersDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: userId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
